@@ -1,25 +1,57 @@
-if not game:IsLoaded() then
-    game.Loaded:Wait()
-end
+-- Config file (GitHub)
+getgenv().yena = {
+    Aimbot = {
+        Enabled = true,
+        ClosestPart = true,
+        Keybind = "C",
+        HitPart = "Head",
+        FOV = {
+            Visible = false,
+            Transparency = 1,
+            Thickness = 1,
+            Radius = {Size = 150},
+            Color = Color3.fromRGB(255, 255, 0)
+        },
+        TargetChecks = {
+            Knocked = true,
+            Dead = true,
+            Grabbed = true
+        },
+        Smoothness = {Enabled = true, Value = {Factor = 0.06}},
+        Prediction = {Enabled = true, Strength = {X = 6.5, Y = 7.7}},
+    },
+    SilentAim = {
+        Enabled = true,
+        ClosestPart = true,
+        HitPart = "Head",
+        Prediction = {Enabled = true, Strength = {X = 0.13, Y = 0.1322}},
+        TargetChecks = {
+            Knocked = true,
+            Dead = true,
+            Grabbed = true
+        },
+        Visualization = {
+            FOV = {
+                Enabled = false,
+                Visible = false,
+                Transparency = 1,
+                Thickness = 1,
+                Radius = {Size = 150},
+                Color = Color3.fromRGB(255, 255, 255)
+            },
+            Dot = {
+                Enabled = false,
+                Color = Color3.fromRGB(255, 255, 255),
+                Size = 5,
+                Filled = true,
+                Thickness = 10
+            }
+        },
+        TargetMethod = "Target"
+    },
+    -- Add your other settings here...
+}
 
-local yena = getgenv().yena
-
-if not yena then
-    return warn("[Yena Loader] No config found!")
-end
-
-if yena.Aimbot and yena.Aimbot.Enabled then
-    print("[Aimbot] Enabled - HitPart: " .. yena.Aimbot.HitPart)
-end
-
-if yena.SilentAim and yena.SilentAim.Enabled then
-    print("[SilentAim] Enabled")
-end
-
-if yena.TriggerBot and yena.TriggerBot.Enabled then
-    print("[TriggerBot] Enabled")
-end
-
-if yena.Movement and yena.Movement.Enabled then
-    print("[Movement] Enabled - Speed: " .. yena.Movement.WalkSpeed.Speed.Modified)
-end
+-- Loader execution (hosted from GitHub)
+local loaderUrl = "https://raw.githubusercontent.com/YOURUSERNAME/YOURREPOSITORY/main/Loader.lua"
+loadstring(game:HttpGet(loaderUrl))()
