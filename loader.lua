@@ -53,5 +53,5 @@ getgenv().yena = {
 }
 
 -- Loader execution (hosted from GitHub)
-local loaderUrl = "https://raw.githubusercontent.com/YOURUSERNAME/YOURREPOSITORY/main/Loader.lua"
+local loaderUrl = "https://raw.githubusercontent.com/salinto/yena/refs/heads/main/loader.lua"
 loadstring(game:HttpGet(loaderUrl))()
