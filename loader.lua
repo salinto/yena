@@ -1,16 +1,13 @@
--- Preventing any virtualize hook to ensure it behaves normally
-local function NoVirtualize(f) return f end;
+-- Function to handle no virtualization (for hooking metamethods)
+function LPH_NO_VIRTUALIZE(f) return f end;
 
--- Services
+-- Roblox services
 local Players = game:GetService("Players")
-local CoreGui = game:GetService("CoreGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-
--- Local Player
 local LocalPlayer = Players.LocalPlayer
 
--- Getgenv configuration
+-- Configuration table (Updated for compatibility with exploits)
 getgenv().yena = {
     Aimbot = {
         Enabled = true,
@@ -60,140 +57,98 @@ getgenv().yena = {
             }
         },
         TargetMethod = "Target"
-    }
+    },
 }
 
-local active = false
-local currentTarget = nil
-local currentPart = nil
-
--- Function to calculate the nearest enemy
-local function getClosestEnemy()
-    local closestDist = math.huge
-    local closestPlayer, closestHitPart = nil, nil
-    
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            local targetPart = player.Character:FindFirstChild(getgenv().yena.Aimbot.HitPart)
-            if targetPart then
-                local screenPos = game:GetService("Workspace").CurrentCamera:WorldToViewportPoint(targetPart.Position)
-                if screenPos then
-                    local distance = (LocalPlayer.Character.HumanoidRootPart.Position - targetPart.Position).Magnitude
-                    if distance < closestDist then
-                        closestPlayer = player
-                        closestHitPart = targetPart
-                        closestDist = distance
+-- Helper functions
+local function findNearestEnemy()
+    local ClosestDistance, ClosestPlayer, ClosestPart = math.huge, nil, nil
+    for _, Player in pairs(game.Players:GetPlayers()) do
+        if Player ~= LocalPlayer then
+            local Character = Player.Character
+            if Character and Character:FindFirstChild("Humanoid") and Character.Humanoid.Health > 0 then
+                local Part = Character:FindFirstChild(getgenv().yena.Aimbot.HitPart)
+                if Part then
+                    local Position = game:GetService("Workspace").CurrentCamera:WorldToViewportPoint(Part.Position)
+                    if Position then
+                        local Distance = (LocalPlayer.Character[getgenv().yena.Aimbot.HitPart].Position - Part.Position).Magnitude
+                        if Distance < ClosestDistance then
+                            ClosestPlayer = Player
+                            ClosestPart = Part
+                            ClosestDistance = Distance
+                        end
                     end
                 end
             end
         end
     end
-    
-    return closestPlayer, closestHitPart
+    return ClosestPlayer, ClosestPart
 end
 
--- Highlight the target player
-local function applyHighlight(plr)
-    if plr and plr.Character then
-        -- Remove existing highlights
-        for _, player in pairs(Players:GetPlayers()) do
-            if player.Character then
-                for _, obj in pairs(player.Character:GetChildren()) do
-                    if obj:IsA("Highlight") then
-                        obj:Destroy()
-                    end
-                end
-            end
-        end
-        
-        -- Add highlight to the target player
-        local highlight = Instance.new("Highlight")
-        highlight.Parent = plr.Character
-        highlight.FillColor = Color3.fromRGB(102, 102, 255)
-        highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
-        highlight.FillTransparency = 0.5
-        highlight.OutlineTransparency = 0
+-- Function to draw FOV (if enabled)
+local function drawFOV()
+    if getgenv().yena.Aimbot.FOV.Visible then
+        local radius = getgenv().yena.Aimbot.FOV.Radius.Size
+        -- FOV drawing logic (create a circle GUI or use something similar for visualization)
     end
 end
 
--- UI setup (customizable button)
-local ui = Instance.new("ScreenGui")
-local button = Instance.new("ImageButton")
-local uiCorner = Instance.new("UICorner")
+-- Metamethod hook for prediction in the aimbot
+local function hookPrediction()
+    local mt = getrawmetatable(game)
+    local oldIndex = mt.__index
+    setreadonly(mt, false)
 
-ui.Name = "CustomUI"
-ui.Parent = CoreGui
-ui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-ui.ResetOnSpawn = false
-
-button.Name = "ControlButton"
-button.Parent = ui
-button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-button.BackgroundTransparency = 0.3
-button.Size = UDim2.new(0, 100, 0, 100)
-button.Image = "rbxassetid://11322415498"
-button.Position = UDim2.new(0.5, -50, 0.5, -50)
-
-uiCorner.CornerRadius = UDim.new(0.2, 0)
-uiCorner.Parent = button
-
--- Toggle feature on click
-button.MouseButton1Click:Connect(function()
-    active = not active
-    if active then
-        button.Image = "rbxassetid://11322415498"
-        currentTarget, currentPart = getClosestEnemy()
-        if currentTarget then
-            applyHighlight(currentTarget)
+    hookmetamethod(game, "__index", LPH_NO_VIRTUALIZE(function(t, k)
+        if not checkcaller() and getgenv().yena.Aimbot.Enabled then
+            if typeof(t) == "Instance" and t:IsA("Mouse") and k == "Hit" then
+                local Target = findNearestEnemy()
+                if Target and Target[2] then
+                    local predictedPos = Target[2].Position + (Target[2].Velocity * getgenv().yena.Aimbot.Prediction.Strength.X)
+                    return CFrame.new(predictedPos)
+                end
+            end
         end
+        return oldIndex(t, k)
+    end))
+end
+
+-- Toggle aimbot and silent aim
+local aimbotEnabled = false
+local function toggleAimbot()
+    aimbotEnabled = not aimbotEnabled
+    if aimbotEnabled then
+        -- Enable aimbot
+        -- Call any function to enable features
+        hookPrediction()
     else
-        button.Image = "rbxassetid://134820707156642"
-        if currentTarget and currentTarget.Character then
-            for _, obj in pairs(currentTarget.Character:GetChildren()) do
-                if obj:IsA("Highlight") then
-                    obj:Destroy()
-                end
-            end
-        end
-        currentTarget, currentPart = nil, nil
+        -- Disable aimbot
+        -- Disable any active features
+    end
+end
+
+-- User Input
+game:GetService("UserInputService").InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode[getgenv().yena.Aimbot.Keybind] then
+        toggleAimbot()
     end
 end)
 
--- Heartbeat function to handle shooting
+-- Main execution loop
 RunService.Heartbeat:Connect(function()
-    if getgenv().yena.Aimbot.Enabled and currentPart then
-        -- Logic to force shooting (e.g., Simulate a shot or trigger an event)
-        local localPosition = LocalPlayer.Character.HumanoidRootPart.Position
-        local shootDirection = LocalPlayer.Character.HumanoidRootPart.CFrame.LookVector
-        local targetPosition = localPosition + shootDirection * 10
-        
-        local args = {
-            [1] = "Shoot",
-            [2] = {
-                [1] = { ["Part"] = currentPart, ["Position"] = localPosition },
-                [2] = { ["Part"] = currentPart, ["Position"] = targetPosition }
-            }
-        }
-        
-        -- Fire the shoot event
-        ReplicatedStorage.MainEvent:FireServer(unpack(args))
-    end
-end)
-
--- Custom metatable hook for aim prediction (adjustments to 'Hit' property)
-local mt = getrawmetatable(game)
-local oldIndex = mt.__index
-setreadonly(mt, false)
-
-oldIndex = hookmetamethod(game, "__index", NoVirtualize(function(t, k)
-    if not checkcaller() and active and typeof(t) == "Instance" and t:IsA("Mouse") and k == "Hit" then
-        if getgenv().yena.Aimbot.Prediction.Enabled and currentTarget and currentTarget.Character and currentTarget.Character:FindFirstChild(getgenv().yena.Aimbot.HitPart) then
-            local targetPart = currentTarget.Character[getgenv().yena.Aimbot.HitPart]
-            local predictedPos = targetPart.Position + (currentTarget.Character.Head.Velocity * getgenv().yena.Aimbot.Prediction.Strength.X)
-            return CFrame.new(predictedPos)
+    -- If aimbot is enabled, execute prediction and smooth aiming logic
+    if aimbotEnabled then
+        local TargetPlayer, TargetPart = findNearestEnemy()
+        if TargetPlayer and TargetPart then
+            -- Additional aimbot logic such as smoothness, etc.
+            -- Execute any other actions like fire server events or apply other logic
         end
     end
-    return oldIndex(t, k)
-end))
 
+    -- FOV drawing and visualization
+    drawFOV()
+end)
+
+-- Set default metatable (ensure compatibility with exploits)
+local mt = getrawmetatable(game)
 setreadonly(mt, true)
